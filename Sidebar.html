@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Lead Guard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: #f8fafc; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans text-xs flex flex-col h-screen select-none">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20 flex items-center justify-between shadow-xs">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+        🛡️
+      </div>
+      <div>
+        <h1 class="text-sm font-bold text-slate-900 leading-none">Smart Lead Guard</h1>
+        <div class="flex items-center gap-1.5 mt-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="engineStatus" class="text-[10px] text-slate-500 font-medium">Instant Guard Active</span>
+        </div>
+      </div>
+    </div>
+    <button onclick="refreshState()" title="Refresh" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+    </button>
+  </header>
+
+  <!-- Real-Time Notification Banner -->
+  <div id="realtimeBanner" class="hidden bg-amber-500 text-white px-3 py-2 flex items-center justify-between shadow-xs transition-all">
+    <div class="flex items-center gap-1.5">
+      <span class="text-xs">⚡</span>
+      <span id="realtimeBannerText" class="font-bold text-[11px]">Instant Alert: Duplicate found!</span>
+    </div>
+    <button onclick="dismissBanner()" class="text-white text-xs font-bold px-1.5 hover:opacity-80">✕</button>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="flex border-b border-slate-200 bg-white px-2">
+    <button id="tabLeadBtn" onclick="setTab('lead')" class="flex-1 py-2 text-center font-bold text-indigo-600 border-b-2 border-indigo-600">
+      Lead & Intel
+    </button>
+    <button id="tabAuditBtn" onclick="setTab('audit')" class="flex-1 py-2 text-center font-medium text-slate-500 hover:text-slate-700">
+      Batch Audit (1k+)
+    </button>
+  </div>
+
+  <!-- Main Scrollable Body -->
+  <main class="flex-1 overflow-y-auto p-3 space-y-3">
+
+    <!-- TAB 1: LEAD & INTEL -->
+    <div id="viewLead" class="space-y-3">
+      
+      <!-- Current Lead Card -->
+      <section class="bg-white rounded-xl p-3 border border-slate-200 shadow-xs space-y-1">
+        <div class="flex items-center justify-between">
+          <span id="leadIdBadge" class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-[10px] font-bold">LD-000</span>
+          <span id="rowBadge" class="text-slate-400 text-[10px] font-medium">Row --</span>
+        </div>
+        <div>
+          <h2 id="leadName" class="text-sm font-bold text-slate-900 leading-snug">Select a row...</h2>
+          <p id="leadCompany" class="text-xs text-slate-600 font-medium">--</p>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-400 pt-1 text-[11px]">
+          <span>🌐</span>
+          <span id="leadDomain" class="text-slate-500 truncate font-mono">--</span>
+        </div>
+      </section>
+
+      <!-- Duplicate Detection Status -->
+      <section>
+        <div class="flex items-center justify-between mb-1.5">
+          <h3 class="text-xs font-bold text-slate-800">Duplicate Shield</h3>
+          <span id="dupCount" class="hidden bg-red-100 text-red-700 font-bold px-1.5 py-0.2 rounded-full text-[10px]">0 Matches</span>
+        </div>
+
+        <!-- Safe State -->
+        <div id="safeState" class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-2.5 rounded-xl flex items-center gap-2">
+          <div class="text-base text-emerald-500 font-bold">✓</div>
+          <div class="text-[11px]">
+            <p class="font-bold">No duplicates detected</p>
+            <p class="text-[10px] text-emerald-600">Lead is unique across all rows.</p>
+          </div>
+        </div>
+
+        <!-- Duplicates List -->
+        <div id="duplicatesList" class="space-y-2 hidden"></div>
+      </section>
+
+      <!-- $0 Web Intelligence & Leadership Scraper -->
+      <section class="bg-white rounded-xl p-3 border border-slate-200 shadow-xs space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span class="text-indigo-600 font-bold">🌐</span>
+            <h3 class="text-xs font-bold text-slate-900">$0 Web Intelligence</h3>
+          </div>
+          <button id="enrichBtn" onclick="runEnrichment()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-2 py-1 rounded text-[10px] transition-colors">
+            Scrape Website
+          </button>
+        </div>
+
+        <p id="intelPrompt" class="text-slate-400 italic text-[11px]">
+          Click "Scrape Website" to pull public title, meta description, and team contacts for $0.
+        </p>
+
+        <!-- Skeleton Loader -->
+        <div id="intelLoading" class="hidden space-y-2 py-1 animate-pulse">
+          <div class="h-3 bg-slate-200 rounded w-3/4"></div>
+          <div class="h-2 bg-slate-200 rounded w-full"></div>
+          <div class="h-2 bg-slate-200 rounded w-5/6"></div>
+        </div>
+
+        <!-- Results Display -->
+        <div id="intelContent" class="hidden space-y-2.5 pt-1 border-t border-slate-100">
+          <div class="flex items-start gap-2">
+            <img id="intelFavicon" src="" class="w-4 h-4 rounded-sm mt-0.5 bg-slate-100 shrink-0">
+            <div>
+              <p id="intelTitle" class="font-bold text-slate-900 text-xs leading-tight"></p>
+              <div id="socialLinks" class="flex gap-2 mt-1"></div>
+            </div>
+          </div>
+
+          <p id="intelDesc" class="text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 leading-relaxed"></p>
+
+          <!-- Leadership Discovered -->
+          <div>
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Scraped Team & Leadership ($0)</h4>
+            <div id="peopleList" class="flex flex-wrap gap-1"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- TAB 2: FULL BATCH AUDIT -->
+    <div id="viewAudit" class="hidden space-y-3">
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-2">
+        <h3 class="text-xs font-bold text-slate-900">Batch Sheet Scan</h3>
+        <p class="text-[11px] text-slate-500">Uses in-memory inverted hash indices to audit 1,000+ records in under a second.</p>
+        <button id="batchScanBtn" onclick="runBatchScan()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg text-xs transition-colors">
+          Scan All Records
+        </button>
+      </div>
+
+      <div id="auditResultsBox" class="hidden space-y-2">
+        <p id="auditStats" class="text-[11px] font-bold text-slate-700 px-1"></p>
+        <div id="auditList" class="space-y-2"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 px-3 py-2 text-[10px] text-slate-400 flex items-center justify-between">
+    <span>🛡️ Real-time Guard & Crawler</span>
+    <span id="recordCount">-- records indexed</span>
+  </footer>
+
+  <script>
+    let activeLeadDomain = '';
+    let pollingTimer = null;
+
+    window.addEventListener('load', () => {
+      refreshState();
+      // Light background poll to keep active row in sync
+      pollingTimer = setInterval(refreshState, 3000);
+    });
+
+    function setTab(tab) {
+      const isLead = tab === 'lead';
+      document.getElementById('viewLead').classList.toggle('hidden', !isLead);
+      document.getElementById('viewAudit').classList.toggle('hidden', isLead);
+      document.getElementById('tabLeadBtn').className = isLead
+        ? "flex-1 py-2 text-center font-bold text-indigo-600 border-b-2 border-indigo-600"
+        : "flex-1 py-2 text-center font-medium text-slate-500 hover:text-slate-700";
+      document.getElementById('tabAuditBtn').className = !isLead
+        ? "flex-1 py-2 text-center font-bold text-indigo-600 border-b-2 border-indigo-600"
+        : "flex-1 py-2 text-center font-medium text-slate-500 hover:text-slate-700";
+    }
+
+    function refreshState() {
+      google.script.run
+        .withSuccessHandler(renderState)
+        .getSidebarState();
+    }
+
+    function renderState(state) {
+      if (!state.valid) return;
+
+      document.getElementById('leadIdBadge').innerText = state.leadId || `Row ${state.rowIndex}`;
+      document.getElementById('rowBadge').innerText = `Row ${state.rowIndex}`;
+      document.getElementById('leadName').innerText = state.name || '(No Name)';
+      document.getElementById('leadCompany').innerText = state.company || '(No Company)';
+      document.getElementById('leadDomain').innerText = state.domain || '(No Domain)';
+      document.getElementById('recordCount').innerText = `${state.totalRecords} records indexed`;
+
+      if (activeLeadDomain !== state.domain) {
+        activeLeadDomain = state.domain;
+        resetIntelUI();
+      }
+
+      renderDuplicates(state.duplicates);
+
+      // Check for instant edit alert
+      if (state.latestRealTimeAlert && (Date.now() - state.latestRealTimeAlert.timestamp < 10000)) {
+        showBanner(`⚠️ Duplicate detected at Row ${state.latestRealTimeAlert.row}!`);
+      }
+    }
+
+    function renderDuplicates(dups) {
+      const safe = document.getElementById('safeState');
+      const list = document.getElementById('duplicatesList');
+      const badge = document.getElementById('dupCount');
+      list.innerHTML = '';
+
+      if (!dups || dups.length === 0) {
+        safe.classList.remove('hidden');
+        list.classList.add('hidden');
+        badge.classList.add('hidden');
+        return;
+      }
+
+      safe.classList.add('hidden');
+      list.classList.remove('hidden');
+      badge.classList.remove('hidden');
+      badge.innerText = `${dups.length} Match${dups.length > 1 ? 'es' : ''}`;
+
+      dups.forEach(d => {
+        const item = document.createElement('div');
+        item.className = "bg-amber-50 border border-amber-200 rounded-xl p-2.5 space-y-1.5";
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-amber-950 text-[11px]">⚠️ Conflict with ${d.leadId}</span>
+            <span class="bg-red-100 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-bold text-[10px]">${d.score}% Match</span>
+          </div>
+          <div class="bg-white/80 p-1.5 rounded border border-amber-100 text-[11px]">
+            <p class="font-semibold text-slate-800">${escapeHtml(d.name)} <span class="font-normal text-slate-500">at</span> ${escapeHtml(d.company)}</p>
+            <p class="text-[10px] text-slate-400">${escapeHtml(d.domain)}</p>
+          </div>
+          <div class="flex items-center justify-between text-[10px]">
+            <span class="text-amber-800 italic">${escapeHtml(d.reason)}</span>
+            <button onclick="google.script.run.highlightRow(${d.conflictingRow})" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-0.5 rounded">Row ${d.conflictingRow}</button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function showBanner(msg) {
+      const b = document.getElementById('realtimeBanner');
+      document.getElementById('realtimeBannerText').innerText = msg;
+      b.classList.remove('hidden');
+    }
+
+    function dismissBanner() {
+      document.getElementById('realtimeBanner').classList.add('hidden');
+    }
+
+    // $0 Deep Web Intelligence Scraper
+    function resetIntelUI() {
+      document.getElementById('intelPrompt').classList.remove('hidden');
+      document.getElementById('intelLoading').classList.add('hidden');
+      document.getElementById('intelContent').classList.add('hidden');
+    }
+
+    function runEnrichment() {
+      if (!activeLeadDomain) {
+        alert('Please select a lead with a valid website domain.');
+        return;
+      }
+
+      const btn = document.getElementById('enrichBtn');
+      btn.disabled = true;
+      document.getElementById('intelPrompt').classList.add('hidden');
+      document.getElementById('intelContent').classList.add('hidden');
+      document.getElementById('intelLoading').classList.remove('hidden');
+
+      google.script.run
+        .withSuccessHandler(data => {
+          btn.disabled = false;
+          document.getElementById('intelLoading').classList.add('hidden');
+
+          if (!data.success) {
+            document.getElementById('intelPrompt').innerText = data.error;
+            document.getElementById('intelPrompt').classList.remove('hidden');
+            return;
+          }
+
+          document.getElementById('intelTitle').innerText = data.title;
+          document.getElementById('intelDesc').innerText = data.description;
+          document.getElementById('intelFavicon').src = data.favicon;
+
+          // Socials
+          const soc = document.getElementById('socialLinks');
+          soc.innerHTML = '';
+          if (data.socials.linkedin) soc.innerHTML += `<a href="${data.socials.linkedin}" target="_blank" class="text-blue-600 hover:underline font-semibold text-[10px]">LinkedIn</a>`;
+          if (data.socials.twitter) soc.innerHTML += `<a href="${data.socials.twitter}" target="_blank" class="text-sky-500 hover:underline font-semibold text-[10px]">X / Twitter</a>`;
+          if (data.socials.github) soc.innerHTML += `<a href="${data.socials.github}" target="_blank" class="text-slate-800 hover:underline font-semibold text-[10px]">GitHub</a>`;
+
+          // People Discovered for $0
+          const peopleBox = document.getElementById('peopleList');
+          peopleBox.innerHTML = '';
+          if (data.discoveredPeople && data.discoveredPeople.length > 0) {
+            data.discoveredPeople.forEach(person => {
+              const chip = document.createElement('span');
+              chip.className = "bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[10px] font-medium border border-slate-200";
+              chip.innerText = person;
+              peopleBox.appendChild(chip);
+            });
+          } else {
+            peopleBox.innerHTML = '<span class="text-slate-400 italic text-[10px]">No public executive names found on homepage.</span>';
+          }
+
+          document.getElementById('intelContent').classList.remove('hidden');
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false;
+          document.getElementById('intelLoading').classList.add('hidden');
+          document.getElementById('intelPrompt').innerText = 'Scraping error: ' + err.message;
+          document.getElementById('intelPrompt').classList.remove('hidden');
+        })
+        .scrapeDomainIntelligence(activeLeadDomain);
+    }
+
+    // Batch Audit for 1,000+ Records
+    function runBatchScan() {
+      const btn = document.getElementById('batchScanBtn');
+      btn.disabled = true;
+      btn.innerText = 'Scanning 1,000+ leads in-memory...';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.disabled = false;
+          btn.innerText = 'Scan All Records';
+
+          const box = document.getElementById('auditResultsBox');
+          const list = document.getElementById('auditList');
+          const stats = document.getElementById('auditStats');
+
+          box.classList.remove('hidden');
+          list.innerHTML = '';
+          stats.innerText = `Audit Complete: Found ${res.duplicates.length} conflict(s) across ${res.totalRows} leads`;
+
+          res.duplicates.forEach(d => {
+            const el = document.createElement('div');
+            el.className = "bg-white border border-slate-200 p-2.5 rounded-lg space-y-1";
+            el.innerHTML = `
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-[11px] text-slate-800">Row ${d.sourceRow} ⟷ Row ${d.conflictingRow}</span>
+                <span class="bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded text-[10px] font-bold">${d.score}%</span>
+              </div>
+              <p class="text-[11px] text-slate-600 font-medium">${escapeHtml(d.sourceName)} vs. ${escapeHtml(d.targetName)}</p>
+              <div class="flex items-center justify-between text-[10px] pt-1">
+                <span class="text-slate-400 italic">${escapeHtml(d.reason)}</span>
+                <button onclick="google.script.run.highlightRow(${d.conflictingRow})" class="bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded font-semibold text-slate-700">Jump</button>
+              </div>
+            `;
+            list.appendChild(el);
+          });
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false;
+          btn.innerText = 'Scan All Records';
+          alert('Batch scan failed: ' + err.message);
+        })
+        .scanEntireSheet();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
